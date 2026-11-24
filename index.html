@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sprite Stash</title>
+  <meta name="theme-color" content="#0c0f14">
+  <link rel="icon" href="images/280-T_Icon_BR_Creature_Sprite_PeelyBones_L.webp">
+  <style>
+    :root {
+      --bg: #0c0f14;
+      --bg-elev: #141821;
+      --card: #1a2030;
+      --card-hover: #232a3d;
+      --ink: #f4f1ea;
+      --muted: #9aa3b2;
+      --faint: #6b7383;
+      --line: #2a3142;
+      --gold: #f0c14b;
+      --mint: #3ee0a2;
+      --owned-ring: #3ee0a2;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      --rare: #4aa3ff;
+      --epic: #b56bff;
+      --legendary: #ff9a2e;
+      --mythic: #ffd24a;
+      --special: #9aa3b2;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Trebuchet MS", "Segoe UI", "Avenir Next", sans-serif;
+      min-height: 100%;
+    }
+    body {
+      background-image:
+        radial-gradient(1200px 500px at 50% -80px, rgba(240, 193, 75, 0.08), transparent 60%),
+        radial-gradient(800px 400px at 100% 0, rgba(109, 93, 247, 0.06), transparent 50%);
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(12, 15, 20, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 16px 20px 14px;
+    }
+    .title-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.7rem;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+    }
+    h1 span {
+      color: var(--gold);
+    }
+    .count-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      min-width: 160px;
+      flex: 1;
+    }
+    .count {
+      font-size: 1.15rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .count b { color: var(--gold); font-size: 1.35rem; }
+    .count .slash { color: var(--faint); }
+    .bar {
+      width: min(240px, 100%);
+      height: 6px;
+      background: #2a3142;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .bar > i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, #3ee0a2, #f0c14b);
+      border-radius: 99px;
+      transition: width 0.25s ease;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+      align-items: center;
+    }
+    .seg {
+      display: flex;
+      flex-wrap: wrap;
+      background: var(--bg-elev);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .seg button, .chip {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.92rem;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+    .seg button[aria-pressed="true"], .chip[aria-pressed="true"] {
+      background: var(--ink);
+      color: #111;
+      font-weight: 700;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .chip {
+      background: var(--bg-elev);
+      border: 1px solid var(--line);
+    }
+    .chip[aria-pressed="true"] {
+      border-color: transparent;
+    }
+    .search {
+      flex: 1 1 200px;
+      min-width: 160px;
+    }
+    .search input {
+      width: 100%;
+      background: var(--bg-elev);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      font: inherit;
+      padding: 8px 14px;
+      border-radius: 999px;
+      outline: none;
+    }
+    .search input:focus {
+      border-color: var(--gold);
+    }
+    .search input::placeholder { color: var(--faint); }
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px 16px 80px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      position: relative;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 8px 12px;
+      cursor: pointer;
+      text-align: center;
+      color: inherit;
+      font: inherit;
+      box-shadow: none;
+      transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: var(--accent, var(--special));
+      opacity: 0.9;
+    }
+    .card:hover, .card:focus-visible {
+      background: var(--card-hover);
+      transform: translateY(-2px);
+      outline: none;
+    }
+    .card.owned {
+      border-color: color-mix(in srgb, var(--owned-ring) 55%, var(--line));
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--owned-ring) 35%, transparent);
+    }
+    .card.missing .art img {
+      filter: grayscale(0.85) brightness(0.7);
+      opacity: 0.85;
+    }
+    .card.owned .art img {
+      filter: none;
+      opacity: 1;
+    }
+    .art {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      margin-bottom: 8px;
+    }
+    .art img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      image-rendering: auto;
+      transition: filter 0.15s ease, opacity 0.15s ease;
+    }
+    .tick {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--mint);
+      color: #082418;
+      display: none;
+      place-items: center;
+      font-weight: 800;
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .card.owned .tick { display: grid; }
+    .name {
+      font-size: 0.82rem;
+      line-height: 1.25;
+      min-height: 2.5em;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .meta {
+      margin-top: 4px;
+      font-size: 0.7rem;
+      color: var(--faint);
+      letter-spacing: 0.02em;
+    }
+    .badge-new {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: var(--gold);
+      color: #1a1404;
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 999px;
+    }
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 60px 16px;
+      display: none;
+    }
+    .empty.show { display: block; }
+    footer {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 20px 32px;
+      color: var(--faint);
+      font-size: 0.8rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      align-items: center;
+    }
+    footer button, footer a {
+      background: none;
+      border: 0;
+      color: var(--muted);
+      font: inherit;
+      font-size: inherit;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+    footer button:hover, footer a:hover { color: var(--ink); }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--ink);
+      color: #111;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 40;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    @media (max-width: 520px) {
+      h1 { font-size: 1.35rem; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 8px; }
+      .header-inner { padding: 12px 12px 10px; }
+      .count-wrap { align-items: flex-start; min-width: 0; width: 100%; }
+      .bar { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="title-row">
+        <h1>Sprite <span>Stash</span></h1>
+        <div class="count-wrap">
+          <div class="count"><b id="owned-count">0</b><span class="slash"> / </span><span id="total-count">0</span> owned</div>
+          <div class="bar" aria-hidden="true"><i id="owned-bar"></i></div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="seg" role="tablist" aria-label="Collection filter">
+          <button type="button" data-own="all" aria-pressed="true">All</button>
+          <button type="button" data-own="owned" aria-pressed="false">Owned</button>
+          <button type="button" data-own="missing" aria-pressed="false">Missing</button>
+        </div>
+        <div class="search">
+          <input id="search" type="search" placeholder="Search sprites" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="controls" style="margin-top:10px">
+        <div class="chips" id="season-chips" aria-label="Season"></div>
+      </div>
+      <div class="controls" style="margin-top:6px">
+        <div class="chips" id="variant-chips" aria-label="Variant"></div>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div id="empty" class="empty">No sprites match those filters.</div>
+    <div id="grid" class="grid"></div>
+  </main>
+  <footer>
+    <span>Clicks are saved in this browser, on this device only. No account needed.</span>
+    <span>List and pictures from fortnite.gg/sprites.</span>
+    <button type="button" id="btn-export">Export owned</button>
+    <button type="button" id="btn-import">Import</button>
+    <input id="import-file" type="file" accept="application/json,.json" hidden>
+  </footer>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="sprites-data.js"></script>
+  <script>
+    (function () {
+      const STORAGE_KEY = "sprite-stash-owned";
+      const data = window.SPRITE_STASH_DATA;
+      const grid = document.getElementById("grid");
+      const empty = document.getElementById("empty");
+      const ownedEl = document.getElementById("owned-count");
+      const totalEl = document.getElementById("total-count");
+      const barEl = document.getElementById("owned-bar");
+      const searchEl = document.getElementById("search");
+      const toastEl = document.getElementById("toast");
+      const seasonChips = document.getElementById("season-chips");
+      const variantChips = document.getElementById("variant-chips");
+
+      if (!data || !Array.isArray(data.sprites) || !data.sprites.length) {
+        empty.textContent = "Sprite data is missing. Keep sprites-data.js next to this file.";
+        empty.classList.add("show");
+        return;
+      }
+
+      const rarityColor = {
+        rare: "var(--rare)",
+        epic: "var(--epic)",
+        legendary: "var(--legendary)",
+        mythic: "var(--mythic)",
+        special: "var(--special)"
+      };
+      const variantColor = {
+        cheatmaster: "#65c51f",
+        hacker: "#8b89ff",
+        reaper: "#ffb8eb",
+        tricktreat: "#ff7a2a",
+        gold: "#f5b642",
+        candy: "#f16f68",
+        galaxy: "#6d5df7",
+        gem: "#c9e7f2",
+        holofoil: "#f07ad8",
+        cube: "#c060d0",
+        quack: "#a66bff",
+        cursed: "#4f8f78",
+        jeweled: "#c0303f"
+      };
+
+      function loadOwned() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const arr = raw ? JSON.parse(raw) : [];
+          return new Set((Array.isArray(arr) ? arr : []).map(String));
+        } catch (e) {
+          return new Set();
+        }
+      }
+      function saveOwned(set) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(set)));
+      }
+
+      const owned = loadOwned();
+      let ownFilter = "all";
+      let seasonFilter = "all";
+      let variantFilter = "all";
+      let query = "";
+      let toastTimer = 0;
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 1800);
+      }
+
+      function updateCount() {
+        const total = data.sprites.length;
+        const have = data.sprites.reduce(function (n, s) { return n + (owned.has(String(s.id)) ? 1 : 0); }, 0);
+        ownedEl.textContent = String(have);
+        totalEl.textContent = String(total);
+        barEl.style.width = (total ? (have / total) * 100 : 0) + "%";
+      }
+
+      function matches(s) {
+        if (ownFilter === "owned" && !owned.has(String(s.id))) return false;
+        if (ownFilter === "missing" && owned.has(String(s.id))) return false;
+        if (seasonFilter !== "all" && String(s.season) !== seasonFilter) return false;
+        if (variantFilter !== "all" && s.variant !== variantFilter) return false;
+        if (query) {
+          const hay = [s.name, s.parent_name, s.variant_name, s.rarity, s.season_name]
+            .join(" ")
+            .toLowerCase();
+          if (hay.indexOf(query) === -1) return false;
+        }
+        return true;
+      }
+
+      function applyFilters() {
+        let shown = 0;
+        const cards = grid.children;
+        for (let i = 0; i < cards.length; i++) {
+          const el = cards[i];
+          const s = data.sprites[Number(el.dataset.index)];
+          const on = matches(s);
+          el.hidden = !on;
+          if (on) shown++;
+        }
+        empty.classList.toggle("show", shown === 0);
+        grid.style.display = shown === 0 ? "none" : "";
+      }
+
+      function setOwnedUI(card, isOwned) {
+        card.classList.toggle("owned", isOwned);
+        card.classList.toggle("missing", !isOwned);
+        card.setAttribute("aria-pressed", isOwned ? "true" : "false");
+      }
+
+      function toggleOwned(id, card) {
+        const key = String(id);
+        if (owned.has(key)) owned.delete(key);
+        else owned.add(key);
+        saveOwned(owned);
+        setOwnedUI(card, owned.has(key));
+        updateCount();
+        if (ownFilter !== "all") applyFilters();
+      }
+
+      data.sprites.forEach(function (s, index) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "card missing";
+        btn.dataset.index = String(index);
+        btn.dataset.id = String(s.id);
+        const accent = variantColor[s.variant] || rarityColor[s.rarity] || "var(--special)";
+        btn.style.setProperty("--accent", accent);
+        btn.setAttribute("aria-pressed", "false");
+        btn.title = (s.name || "") + (s.variant_name && s.variant !== "base" ? " · " + s.variant_name : "");
+
+        if (s.is_new) {
+          const badge = document.createElement("span");
+          badge.className = "badge-new";
+          badge.textContent = "New";
+          btn.appendChild(badge);
+        }
+
+        const art = document.createElement("div");
+        art.className = "art";
+        const img = document.createElement("img");
+        img.alt = s.name || "Sprite";
+        img.loading = "lazy";
+        img.width = 160;
+        img.height = 160;
+        const localSrc = s.image || "";
+        const remote = s.image_url || "";
+        img.src = localSrc || remote;
+        img.addEventListener("error", function () {
+          if (remote && img.src !== remote && !img.dataset.failed) {
+            img.dataset.failed = "1";
+            img.src = remote;
+          }
+        });
+        const tick = document.createElement("span");
+        tick.className = "tick";
+        tick.setAttribute("aria-hidden", "true");
+        tick.textContent = "✓";
+        art.appendChild(img);
+        art.appendChild(tick);
+        btn.appendChild(art);
+
+        const name = document.createElement("div");
+        name.className = "name";
+        name.textContent = s.name || "Sprite " + s.id;
+        btn.appendChild(name);
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const bits = [];
+        if (s.variant_name && s.variant !== "base") bits.push(s.variant_name);
+        else if (s.rarity) bits.push(s.rarity);
+        if (s.season_name) bits.push(s.season_name);
+        meta.textContent = bits.join(" · ");
+        btn.appendChild(meta);
+
+        setOwnedUI(btn, owned.has(String(s.id)));
+        btn.addEventListener("click", function () { toggleOwned(s.id, btn); });
+        grid.appendChild(btn);
+      });
+
+      function addChip(parent, value, label, selected, onPick) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "chip";
+        b.textContent = label;
+        b.setAttribute("aria-pressed", selected ? "true" : "false");
+        b.addEventListener("click", function () {
+          onPick(value);
+          Array.prototype.forEach.call(parent.children, function (el) {
+            el.setAttribute("aria-pressed", el === b ? "true" : "false");
+          });
+        });
+        parent.appendChild(b);
+      }
+
+      const seasons = data.seasons || {};
+      const seasonEntries = Object.keys(seasons)
+        .map(function (k) { return [k, seasons[k]]; })
+        .sort(function (a, b) { return Number(b[0]) - Number(a[0]); });
+      addChip(seasonChips, "all", "All seasons", true, function (v) { seasonFilter = v; applyFilters(); });
+      seasonEntries.forEach(function (pair) {
+        addChip(seasonChips, pair[0], pair[1], false, function (v) { seasonFilter = v; applyFilters(); });
+      });
+
+      const variants = data.variants || {};
+      const variantOrder = ["all"].concat(Object.keys(variants));
+      variantOrder.forEach(function (key) {
+        const label = key === "all" ? "All variants" : (variants[key] || key);
+        addChip(variantChips, key, label, key === "all", function (v) { variantFilter = v; applyFilters(); });
+      });
+
+      document.querySelectorAll(".seg [data-own]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          ownFilter = btn.getAttribute("data-own") || "all";
+          document.querySelectorAll(".seg [data-own]").forEach(function (el) {
+            el.setAttribute("aria-pressed", el === btn ? "true" : "false");
+          });
+          applyFilters();
+        });
+      });
+
+      searchEl.addEventListener("input", function () {
+        query = (searchEl.value || "").trim().toLowerCase();
+        applyFilters();
+      });
+
+      document.getElementById("btn-export").addEventListener("click", function () {
+        const blob = new Blob([JSON.stringify({ owned: Array.from(owned) }, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "sprite-stash-owned.json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast("Exported " + owned.size + " owned sprites");
+      });
+
+      const importFile = document.getElementById("import-file");
+      document.getElementById("btn-import").addEventListener("click", function () { importFile.click(); });
+      importFile.addEventListener("change", function () {
+        const file = importFile.files && importFile.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function () {
+          try {
+            const parsed = JSON.parse(String(reader.result || ""));
+            const list = Array.isArray(parsed) ? parsed : (parsed.owned || parsed.ids || []);
+            if (!Array.isArray(list)) throw new Error("bad shape");
+            owned.clear();
+            list.forEach(function (id) { owned.add(String(id)); });
+            saveOwned(owned);
+            Array.prototype.forEach.call(grid.children, function (el) {
+              setOwnedUI(el, owned.has(el.dataset.id));
+            });
+            updateCount();
+            applyFilters();
+            toast("Imported " + owned.size + " owned sprites");
+          } catch (e) {
+            toast("Couldn't read that file");
+          }
+          importFile.value = "";
+        };
+        reader.readAsText(file);
+      });
+
+      updateCount();
+      applyFilters();
+    })();
+  </script>
+</body>
+</html>

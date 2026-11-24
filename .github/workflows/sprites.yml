@@ -1,0 +1,124 @@
+# Publishes the site, and once a day looks for new sprites.
+# 01:00 UTC is 09:00 in Australia/Perth (AWST, UTC+8, no daylight saving).
+name: Update sprites and publish site
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+# contents: write lets the daily run commit new sprites.
+# pages and id-token let the same run publish GitHub Pages.
+# A push made with this token does not start another workflow run,
+# so this workflow publishes the site itself after it commits.
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: sprite-stash-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.publish.outputs.deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Set up Python
+        if: github.event_name != 'push'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        if: github.event_name != 'push'
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+
+      # A fetch failure exits 1 before any file is rewritten, so the
+      # committed sprites and images stay as they are and this job stops.
+      - name: Check for new sprites
+        if: github.event_name != 'push'
+        run: python check_new.py
+
+      - name: Commit and push if something changed
+        id: commit
+        if: github.event_name != 'push'
+        run: |
+          python3 - << 'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          previous = subprocess.run(
+              ["git", "show", "HEAD:sprites.json"],
+              capture_output=True,
+          )
+          current = Path("sprites.json")
+          timestamp_only = False
+          if previous.returncode == 0 and current.exists():
+              old = json.loads(previous.stdout.decode("utf-8"))
+              new = json.loads(current.read_text(encoding="utf-8"))
+              old.pop("updated_at", None)
+              new.pop("updated_at", None)
+              timestamp_only = old == new
+          if timestamp_only:
+              subprocess.run(
+                  ["git", "checkout", "--", "sprites.json", "sprites-data.js"],
+                  check=True,
+              )
+              print("Sprite list is unchanged. Not committing a timestamp-only update.")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "Update sprites from fortnite.gg"
+            git push origin HEAD:main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish this run
+        id: publish
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.commit.outputs.changed }}" = "true" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Pages
+        if: steps.publish.outputs.deploy == 'true'
+        uses: actions/configure-pages@v6
+
+      - name: Upload site
+        if: steps.publish.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
